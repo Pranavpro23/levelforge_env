@@ -8,6 +8,7 @@ pinned: false
 app_port: 7860
 tags:
   - openenv
+base_path: /web
 ---
 
 # LevelForge — AI Game Level Designer
