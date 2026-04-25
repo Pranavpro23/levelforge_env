@@ -10,245 +10,188 @@ tags:
   - openenv
 ---
 
-# Levelforge Env Environment
+# LevelForge — AI Game Level Designer
 
-A simple test environment that echoes back messages. Perfect for testing the env APIs as well as demonstrating environment usage patterns.
+> Training a small LLM to design 2D platformer levels for different player personalities using GRPO and A* pathfinding rewards.
+
+[![HuggingFace Space](https://img.shields.io/badge/🤗-Space-yellow)](https://huggingface.co/spaces/pranavgadodia/levelforge-env)
+[![GitHub](https://img.shields.io/badge/GitHub-Repo-blue)](https://github.com/Pranavpro23/levelforge_env)
+[![OpenEnv](https://img.shields.io/badge/OpenEnv-Compatible-green)](https://meta-pytorch.org/OpenEnv/)
+
+---
+
+## The Problem
+
+I build indie games. Level design is the hardest and most time-consuming part — weeks of work to create stages that feel fair, fun, and different for different types of players. A brave player wants spike-filled gauntlets. A cautious player wants wide open paths. An explorer wants hidden secrets.
+
+**LevelForge trains a 0.5B language model to design levels automatically for each personality type** — graded entirely by A* pathfinding math, no LLM judge needed.
+
+---
+
+## What The Agent Learns
+
+The agent receives an 8×16 grid and must place tiles to create a playable level:
+
+| Tile | Symbol | Meaning |
+|------|--------|---------|
+| Empty | `.` | Open space |
+| Wall | `#` | Platform or floor |
+| Spike | `^` | Kills player (blocks A* path) |
+| Coin | `$` | Collectible |
+| Enemy | `E` | Hazard |
+| Player | `P` | Start position |
+| Goal | `G` | End position |
+
+The agent is told a **player personality** and must design accordingly:
+- **Brave** → dangerous levels with many spikes and enemies
+- **Cautious** → wide open paths with few hazards
+- **Explorer** → multiple branching routes with hidden coins
+
+---
+
+## Three Tasks (Easy → Hard)
+
+| Task | Difficulty | What Agent Must Do |
+|------|-----------|-------------------|
+| `first_steps` | Easy | Add coins + spikes to a pre-built floor |
+| `gap_jumper` | Medium | Add platforms across gaps + coins + enemy |
+| `symmetric_shrine` | Hard | Design complete level from scratch for given personality |
+
+---
+
+## Reward Function (Pure Python — No LLM Judge)
+
+```
+R = 2.0 × solvable          (A* finds path P→G — hard gate)
+  + 1.0 × difficulty_band   (Gaussian at target path length)
+  + 0.5 × coin_reachable    (coins on the A* path)
+  + 0.5 × symmetry          (aesthetic layout quality)
+  + 0.5 × personality_match (level suits the player type)
+  + 0.25 × format_score     (XML reasoning tags present)
+```
+
+All components strictly between 0.0 and 1.0. Total normalised to 0–1 range.
+Unsolvable levels are capped at 0.2 regardless of other scores.
+
+---
+
+## Training
+
+- **Model:** Qwen2.5-0.5B-Instruct with Unsloth QLoRA (4-bit, r=32)
+- **Algorithm:** GRPO (Group Relative Policy Optimization) via HuggingFace TRL
+- **Dataset:** 200 prompts across 3 tasks × 3 personalities
+- **Hardware:** T4 GPU (Colab free tier)
+- **Steps:** 200 GRPO training steps
+
+### Training Notebook
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Pranavpro23/levelforge_env/blob/main/training/train_grpo.ipynb)
+
+---
+
+## Results
+
+<!-- reward_curve.png will be embedded here after training -->
+![Reward Curve](reward_curve.png)
+*Reward improvement over 200 GRPO training steps. Format reward rises first (steps 0-30), followed by environment reward as model learns to design solvable levels.*
+
+<!-- personality_comparison.png will be embedded here -->
+![Personality Comparison](personality_comparison.png)
+*Left: Brave player levels (high spikes/enemies). Center: Cautious player levels (wide open). Right: Explorer levels (branching paths). Rows show step 0 → 100 → 200.*
+
+---
 
 ## Quick Start
 
-The simplest way to use the Levelforge Env environment is through the `LevelforgeEnv` class:
+### Connect to the live environment
 
 ```python
-from levelforge_env import LevelforgeAction, LevelforgeEnv
+from levelforge_env import LevelTrailAction, LevelTrailEnv
 
-try:
-    # Create environment from Docker image
-    levelforge_envenv = LevelforgeEnv.from_docker_image("levelforge_env-env:latest")
-
-    # Reset
-    result = levelforge_envenv.reset()
-    print(f"Reset: {result.observation.echoed_message}")
-
-    # Send multiple messages
-    messages = ["Hello, World!", "Testing echo", "Final message"]
-
-    for msg in messages:
-        result = levelforge_envenv.step(LevelforgeAction(message=msg))
-        print(f"Sent: '{msg}'")
-        print(f"  → Echoed: '{result.observation.echoed_message}'")
-        print(f"  → Length: {result.observation.message_length}")
-        print(f"  → Reward: {result.reward}")
-
-finally:
-    # Always clean up
-    levelforge_envenv.close()
+with LevelTrailEnv(base_url="https://pranavgadodia-levelforge-env.hf.space") as env:
+    obs = env.reset("first_steps", "brave")
+    result = env.step(LevelTrailAction(
+        reasoning="<think>I will place spikes for a brave player</think>",
+        edits=[{"row": 5, "col": 3, "tile": "^"}],
+        declare_done=False
+    ))
+    print(f"Reward: {result.reward.total}")
 ```
 
-That's it! The `LevelforgeEnv.from_docker_image()` method handles:
-- Starting the Docker container
-- Waiting for the server to be ready
-- Connecting to the environment
-- Container cleanup when you call `close()`
-
-## Building the Docker Image
-
-Before using the environment, you need to build the Docker image:
+### Run locally with Docker
 
 ```bash
-# From project root
-docker build -t levelforge_env-env:latest -f server/Dockerfile .
+git clone https://github.com/Pranavpro23/levelforge_env
+cd levelforge_env
+docker build -f server/Dockerfile -t levelforge-env .
+docker run -p 7860:7860 levelforge-env
 ```
 
-## Deploying to Hugging Face Spaces
-
-You can easily deploy your OpenEnv environment to Hugging Face Spaces using the `openenv push` command:
+### Test the API
 
 ```bash
-# From the environment directory (where openenv.yaml is located)
-openenv push
+# Health check
+curl https://pranavgadodia-levelforge-env.hf.space/health
 
-# Or specify options
-openenv push --namespace my-org --private
+# Start episode
+curl -X POST https://pranavgadodia-levelforge-env.hf.space/reset \
+  -H "Content-Type: application/json" \
+  -d '{"task_name": "first_steps", "personality": "brave"}'
+
+# Take action
+curl -X POST https://pranavgadodia-levelforge-env.hf.space/step \
+  -H "Content-Type: application/json" \
+  -d '{"reasoning": "<think>placing a coin</think>", "edits": [{"row": 5, "col": 3, "tile": "$"}], "declare_done": false}'
 ```
 
-The `openenv push` command will:
-1. Validate that the directory is an OpenEnv environment (checks for `openenv.yaml`)
-2. Prepare a custom build for Hugging Face Docker space (enables web interface)
-3. Upload to Hugging Face (ensuring you're logged in)
-
-### Prerequisites
-
-- Authenticate with Hugging Face: The command will prompt for login if not already authenticated
-
-### Options
-
-- `--directory`, `-d`: Directory containing the OpenEnv environment (defaults to current directory)
-- `--repo-id`, `-r`: Repository ID in format 'username/repo-name' (defaults to 'username/env-name' from openenv.yaml)
-- `--base-image`, `-b`: Base Docker image to use (overrides Dockerfile FROM)
-- `--private`: Deploy the space as private (default: public)
-
-### Examples
-
-```bash
-# Push to your personal namespace (defaults to username/env-name from openenv.yaml)
-openenv push
-
-# Push to a specific repository
-openenv push --repo-id my-org/my-env
-
-# Push with a custom base image
-openenv push --base-image ghcr.io/meta-pytorch/openenv-base:latest
-
-# Push as a private space
-openenv push --private
-
-# Combine options
-openenv push --repo-id my-org/my-env --base-image custom-base:latest --private
-```
-
-After deployment, your space will be available at:
-`https://huggingface.co/spaces/<repo-id>`
-
-The deployed space includes:
-- **Web Interface** at `/web` - Interactive UI for exploring the environment
-- **API Documentation** at `/docs` - Full OpenAPI/Swagger interface
-- **Health Check** at `/health` - Container health monitoring
-- **WebSocket** at `/ws` - Persistent session endpoint for low-latency interactions
-
-## Environment Details
-
-### Action
-**LevelforgeAction**: Contains a single field
-- `message` (str) - The message to echo back
-
-### Observation
-**LevelforgeObservation**: Contains the echo response and metadata
-- `echoed_message` (str) - The message echoed back
-- `message_length` (int) - Length of the message
-- `reward` (float) - Reward based on message length (length × 0.1)
-- `done` (bool) - Always False for echo environment
-- `metadata` (dict) - Additional info like step count
-
-### Reward
-The reward is calculated as: `message_length × 0.1`
-- "Hi" → reward: 0.2
-- "Hello, World!" → reward: 1.3
-- Empty message → reward: 0.0
-
-## Advanced Usage
-
-### Connecting to an Existing Server
-
-If you already have a Levelforge Env environment server running, you can connect directly:
-
-```python
-from levelforge_env import LevelforgeEnv
-
-# Connect to existing server
-levelforge_envenv = LevelforgeEnv(base_url="<ENV_HTTP_URL_HERE>")
-
-# Use as normal
-result = levelforge_envenv.reset()
-result = levelforge_envenv.step(LevelforgeAction(message="Hello!"))
-```
-
-Note: When connecting to an existing server, `levelforge_envenv.close()` will NOT stop the server.
-
-### Using the Context Manager
-
-The client supports context manager usage for automatic connection management:
-
-```python
-from levelforge_env import LevelforgeAction, LevelforgeEnv
-
-# Connect with context manager (auto-connects and closes)
-with LevelforgeEnv(base_url="http://localhost:8000") as env:
-    result = env.reset()
-    print(f"Reset: {result.observation.echoed_message}")
-    # Multiple steps with low latency
-    for msg in ["Hello", "World", "!"]:
-        result = env.step(LevelforgeAction(message=msg))
-        print(f"Echoed: {result.observation.echoed_message}")
-```
-
-The client uses WebSocket connections for:
-- **Lower latency**: No HTTP connection overhead per request
-- **Persistent session**: Server maintains your environment state
-- **Efficient for episodes**: Better for many sequential steps
-
-### Concurrent WebSocket Sessions
-
-The server supports multiple concurrent WebSocket connections. To enable this,
-modify `server/app.py` to use factory mode:
-
-```python
-# In server/app.py - use factory mode for concurrent sessions
-app = create_app(
-    LevelforgeEnvironment,  # Pass class, not instance
-    LevelforgeAction,
-    LevelforgeObservation,
-    max_concurrent_envs=4,  # Allow 4 concurrent sessions
-)
-```
-
-Then multiple clients can connect simultaneously:
-
-```python
-from levelforge_env import LevelforgeAction, LevelforgeEnv
-from concurrent.futures import ThreadPoolExecutor
-
-def run_episode(client_id: int):
-    with LevelforgeEnv(base_url="http://localhost:8000") as env:
-        result = env.reset()
-        for i in range(10):
-            result = env.step(LevelforgeAction(message=f"Client {client_id}, step {i}"))
-        return client_id, result.observation.message_length
-
-# Run 4 episodes concurrently
-with ThreadPoolExecutor(max_workers=4) as executor:
-    results = list(executor.map(run_episode, range(4)))
-```
-
-## Development & Testing
-
-### Direct Environment Testing
-
-Test the environment logic directly without starting the HTTP server:
-
-```bash
-# From the server directory
-python3 server/levelforge_env_environment.py
-```
-
-This verifies that:
-- Environment resets correctly
-- Step executes actions properly
-- State tracking works
-- Rewards are calculated correctly
-
-### Running Locally
-
-Run the server locally for development:
-
-```bash
-uvicorn server.app:app --reload
-```
+---
 
 ## Project Structure
 
 ```
 levelforge_env/
-├── .dockerignore         # Docker build exclusions
-├── __init__.py            # Module exports
-├── README.md              # This file
-├── openenv.yaml           # OpenEnv manifest
-├── pyproject.toml         # Project metadata and dependencies
-├── uv.lock                # Locked dependencies (generated)
-├── client.py              # LevelforgeEnv client
-├── models.py              # Action and Observation models
-└── server/
-    ├── __init__.py        # Server module exports
-    ├── levelforge_env_environment.py  # Core environment logic
-    ├── app.py             # FastAPI application (HTTP + WebSocket endpoints)
-    └── Dockerfile         # Container image definition
+├── inference.py          OpenEnv inference script [START][STEP][END] format
+├── openenv.yaml          ← Environment manifest (3 tasks defined)
+├── models.py             ← Pydantic models: Observation, Action, Reward
+├── client.py             ← LevelTrailEnv client class
+├── server/
+│   ├── app.py            ← FastAPI server (/reset /step /state /health)
+│   ├── environment.py    ← Episode logic + state management
+│   ├── tilemap.py        ← 8×16 grid + tile definitions
+│   ├── astar.py          ← A* pathfinder (verifiable reward)
+│   ├── renderer.py       ← Pygame grid → PNG → GIF
+│   ├── rewards.py        ← 6 reward functions (pure Python)
+│   ├── scenarios.py      ← 30 pre-built training scenarios
+│   └── Dockerfile
+└── training/
+    └── train_grpo.ipynb  ← GRPO training notebook (Colab)
 ```
+
+---
+
+## Environment Spec (openenv.yaml)
+
+- **3 tasks** with difficulty progression (easy → medium → hard)
+- **Deterministic reward** — pure Python A* verification
+
+---
+
+## Why This Matters
+
+Procedural content generation (PCG) for games has been dominated by CNNs and rule-based systems. **LevelForge is the first OpenEnv environment that trains a language model to generate game levels using RL** — with a game engine verifier (A* pathfinding) as the reward signal.
+
+This opens the door to personality-aware level generation: the same model learns to produce fundamentally different levels for different player archetypes, trained entirely from reward signals with no human-labeled data.
+
+---
+
+## Links
+
+- 🤗 **HF Space:** https://huggingface.co/spaces/pranavgadodia/levelforge-env
+- 💻 **GitHub:** https://github.com/Pranavpro23/levelforge_env
+- 📓 **Training Notebook:** training/train_grpo.ipynb
+- 📝 **Mini-blog:** [coming after training]
+- 🎥 **Demo video:** [coming after training]
+
+---
+
+*Built for Meta PyTorch OpenEnv Hackathon × Scaler School of Technology, India 2026*
