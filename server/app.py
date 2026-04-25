@@ -6,6 +6,8 @@ Endpoints:
     - POST /reset: Reset the environment with task_name and personality
     - POST /step: Execute an action
     - GET /state: Get current environment state
+    - GET /curriculum_level: Get current curriculum level and avg reward
+    - GET /scenarios: Get all curriculum levels
 """
 
 import sys
@@ -13,6 +15,8 @@ import os
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 # Path setup
@@ -26,6 +30,7 @@ if _ROOT_DIR not in sys.path:
 
 from models import LevelTrailObservation, LevelTrailAction, LevelTrailReward
 from environment import LevelTrailEnvironment
+from scenarios import CURRICULUM_LEVELS
 
 
 # Request/Response models
@@ -48,6 +53,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Mount static files
+_STATIC_DIR = os.path.join(_SERVER_DIR, "static")
+if os.path.exists(_STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+
 # Single environment instance
 _env: Optional[LevelTrailEnvironment] = None
 
@@ -57,6 +67,15 @@ def get_env() -> LevelTrailEnvironment:
     if _env is None:
         _env = LevelTrailEnvironment()
     return _env
+
+
+@app.get("/")
+def root():
+    """Serve the web UI."""
+    index_path = os.path.join(_SERVER_DIR, "static", "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "LevelForge Environment API", "status": "running"}
 
 
 @app.get("/health")
@@ -102,6 +121,17 @@ def state():
     return env.state()
 
 
+@app.get("/curriculum_level")
+def curriculum_level():
+    """Get current curriculum level based on rolling average reward."""
+    env = get_env()
+    return env.get_current_curriculum_info()
+
+
+@app.get("/scenarios")
+def scenarios():
+    """Get all available curriculum levels."""
+    return {"curriculum_levels": CURRICULUM_LEVELS}
 
 
 def main():

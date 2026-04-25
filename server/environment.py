@@ -22,8 +22,9 @@ if _ROOT_DIR not in sys.path:
     sys.path.insert(0, _ROOT_DIR)
 
 from models import LevelTrailObservation, LevelTrailAction, LevelTrailReward  # noqa: E402
-from scenarios import get_scenarios  # noqa: E402
+from scenarios import get_scenarios, get_curriculum_level, CURRICULUM_LEVELS  # noqa: E402
 from rewards import compute_total  # noqa: E402
+from tilemap import Grid, make_basic_level, make_gap_level  # noqa: E402
 
 
 class LevelTrailEnvironment:
@@ -42,6 +43,28 @@ class LevelTrailEnvironment:
         self._target_coin_count: int = 0
         self._done: bool = True
         self._total_reward: float = 0.0
+        self._rolling_reward_history: List[float] = []  # Last 10 episodes
+        self._current_curriculum_level: Optional[dict] = None
+
+    # ------------------------------------------------------------------
+    # Curriculum methods
+    # ------------------------------------------------------------------
+
+    def get_avg_reward(self) -> float:
+        """Calculate average reward from last 10 episodes."""
+        if not self._rolling_reward_history:
+            return 0.0
+        return sum(self._rolling_reward_history) / len(self._rolling_reward_history)
+
+    def get_current_curriculum_info(self) -> Dict[str, Any]:
+        """Get current curriculum level and average reward."""
+        avg = self.get_avg_reward()
+        level = get_curriculum_level(avg)
+        return {
+            "avg_reward": avg,
+            "curriculum_level": level,
+            "reward_history_size": len(self._rolling_reward_history)
+        }
 
     # ------------------------------------------------------------------
     # reset
@@ -49,23 +72,47 @@ class LevelTrailEnvironment:
 
     def reset(self, task_name: str, personality: str) -> LevelTrailObservation:
         """Start a new episode for the given task_name / personality pair."""
-        matching = [
-            s for s in self._scenarios
-            if s["task_name"] == task_name and s["personality"] == personality
-        ]
-        scenario = choice(matching)
 
-        # Deep-copy the starting grid so the scenario template is never mutated
-        self._grid = [row[:] for row in scenario["starting_grid"]]
+        # Handle curriculum task selection
+        if task_name == "curriculum":
+            avg_reward = self.get_avg_reward()
+            curriculum_level = get_curriculum_level(avg_reward)
+            self._current_curriculum_level = curriculum_level
+
+            # Build grid based on curriculum level
+            grid_type = curriculum_level["starting_grid"]
+            if grid_type == "basic":
+                grid_obj = make_basic_level()
+            elif grid_type == "gap":
+                grid_obj = make_gap_level()
+            else:  # empty
+                grid_obj = Grid(rows=8, cols=16)
+                grid_obj.place(6, 0, "P")
+                grid_obj.place(6, 15, "G")
+
+            self._grid = grid_obj.to_list()
+            self._target_path_len = curriculum_level["target_path_len"]
+            self._target_coin_count = curriculum_level["target_coin_count"]
+            self._task_name = curriculum_level["name"]
+        else:
+            # Standard scenario selection
+            matching = [
+                s for s in self._scenarios
+                if s["task_name"] == task_name and s["personality"] == personality
+            ]
+            scenario = choice(matching)
+
+            # Deep-copy the starting grid so the scenario template is never mutated
+            self._grid = [row[:] for row in scenario["starting_grid"]]
+            self._target_path_len = scenario["target_path_len"]
+            self._target_coin_count = scenario["target_coin_count"]
+            self._task_name = task_name
 
         self._episode_id = str(uuid4())
         self._step = 0
         self._done = False
         self._total_reward = 0.0
-        self._task_name = task_name
         self._personality = personality
-        self._target_path_len = scenario["target_path_len"]
-        self._target_coin_count = scenario["target_coin_count"]
 
         return LevelTrailObservation(
             episode_id=self._episode_id,
@@ -74,7 +121,7 @@ class LevelTrailEnvironment:
             target_path_len=self._target_path_len,
             target_coin_count=self._target_coin_count,
             personality=personality,
-            task_name=task_name,
+            task_name=self._task_name,
             last_player_result=None,
             feedback_tags=[],
             max_steps=8,
@@ -116,6 +163,12 @@ class LevelTrailEnvironment:
         # Check terminal condition
         done = self._step >= 8 or action.declare_done
         self._done = done
+
+        # Track episode reward in rolling history (last 10 episodes)
+        if done:
+            self._rolling_reward_history.append(self._total_reward)
+            if len(self._rolling_reward_history) > 10:
+                self._rolling_reward_history.pop(0)
 
         observation = LevelTrailObservation(
             episode_id=self._episode_id,

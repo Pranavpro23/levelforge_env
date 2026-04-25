@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LevelForge — AI Game Level Designer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+
+        .badges {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.9em;
+            transition: transform 0.2s;
+        }
+
+        .badge:hover {
+            transform: translateY(-2px);
+            background: #764ba2;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 250px 1fr 280px;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel h2 {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        /* Left Panel - Controls */
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        select, button {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 0.95em;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .curriculum-badge {
+            margin-top: 15px;
+            padding: 12px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 8px;
+            font-size: 0.85em;
+            text-align: center;
+        }
+
+        .curriculum-badge strong {
+            display: block;
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+
+        /* Center Panel - Grid */
+        .grid-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(16, 40px);
+            grid-template-rows: repeat(8, 40px);
+            gap: 2px;
+            background: #ccc;
+            padding: 2px;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .grid-cell {
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .grid-cell:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+        }
+
+        .grid-cell.fixed {
+            cursor: not-allowed;
+            opacity: 0.9;
+        }
+
+        .tile-legend {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            font-size: 0.9em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+
+        /* Right Panel - Rewards */
+        .reward-item {
+            margin-bottom: 12px;
+        }
+
+        .reward-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85em;
+            margin-bottom: 4px;
+            color: #555;
+        }
+
+        .reward-bar {
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .reward-fill {
+            height: 100%;
+            transition: width 0.5s, background-color 0.3s;
+            border-radius: 10px;
+        }
+
+        .reward-fill.high { background: #32C850; }
+        .reward-fill.med { background: #FFC800; }
+        .reward-fill.low { background: #DC3232; }
+
+        .step-counter {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .feedback-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 15px;
+        }
+
+        .feedback-tag {
+            padding: 4px 8px;
+            background: #DC3232;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.75em;
+        }
+
+        .episode-id {
+            font-size: 0.75em;
+            color: #999;
+            margin-top: 15px;
+            text-align: center;
+            word-break: break-all;
+        }
+
+        /* Bottom Info Section */
+        .info-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .info-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-card h3 {
+            font-size: 1.2em;
+            margin-bottom: 12px;
+            color: #667eea;
+        }
+
+        .info-card p, .info-card li {
+            color: #666;
+            line-height: 1.6;
+            font-size: 0.9em;
+        }
+
+        .info-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-card li {
+            padding: 6px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .info-card li:last-child {
+            border-bottom: none;
+        }
+
+        .error-message {
+            background: #DC3232;
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🎮 LevelForge — AI Game Level Designer</h1>
+            <p class="subtitle">Training a 0.5B LLM to design personality-aware platformer levels</p>
+            <div class="badges">
+                <a href="https://github.com/Pranavpro23/levelforge_env" class="badge" target="_blank">📦 GitHub</a>
+                <a href="https://huggingface.co/spaces/pranavgadodia/levelforge-env" class="badge" target="_blank">🤗 HF Space</a>
+                <a href="https://github.com/Pranavpro23/levelforge_env/blob/main/training/train_grpo.ipynb" class="badge" target="_blank">📓 Training Notebook</a>
+            </div>
+        </header>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            <!-- Left Panel - Controls -->
+            <div class="panel">
+                <h2>🎛️ Controls</h2>
+                <div id="errorMessage" class="error-message"></div>
+
+                <div class="control-group">
+                    <label for="taskSelect">Task</label>
+                    <select id="taskSelect">
+                        <option value="first_steps">First Steps (Easy)</option>
+                        <option value="gap_jumper">Gap Jumper (Medium)</option>
+                        <option value="symmetric_shrine">Symmetric Shrine (Hard)</option>
+                        <option value="curriculum">🎓 Curriculum (Auto)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="personalitySelect">Personality</label>
+                    <select id="personalitySelect">
+                        <option value="brave">⚔️ Brave</option>
+                        <option value="cautious">🛡️ Cautious</option>
+                        <option value="explorer">🔍 Explorer</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <button onclick="resetEnvironment()">🔄 Reset Environment</button>
+                </div>
+
+                <div class="control-group">
+                    <button onclick="autoStep()">▶️ Auto Step</button>
+                </div>
+
+                <div id="curriculumBadge" class="curriculum-badge" style="display: none;">
+                    <strong id="curriculumLevel">Loading...</strong>
+                    <div id="curriculumDesc">—</div>
+                    <div style="margin-top: 8px; font-size: 0.9em;">Avg Reward: <span id="avgReward">0.00</span></div>
+                </div>
+            </div>
+
+            <!-- Center Panel - Grid -->
+            <div class="panel">
+                <h2>🎨 Level Editor</h2>
+                <div class="grid-container">
+                    <div id="gameGrid" class="game-grid"></div>
+
+                    <button onclick="applyEdits()" style="max-width: 400px;">✅ Apply My Edits</button>
+
+                    <div class="tile-legend">
+                        <div class="legend-item">
+                            <div class="legend-swatch" style="background: #E6E6E6;"></div>
+                            <span>. Empty</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-swatch" style="background: #505050;"></div>
+                            <span># Wall</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-swatch" style="background: #DC3232;"></div>
+                            <span>^ Spike</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-swatch" style="background: #FFC800;"></div>
+                            <span>$ Coin</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-swatch" style="background: #9632C8;"></div>
+                            <span>E Enemy</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-swatch" style="background: #3264DC;"></div>
+                            <span>P Player</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-swatch" style="background: #32C850;"></div>
+                            <span>G Goal</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Rewards -->
+            <div class="panel">
+                <h2>📊 Rewards</h2>
+                <div class="step-counter" id="stepCounter">Step 0 / 8</div>
+
+                <div id="rewardDisplay">
+                    <div class="reward-item">
+                        <div class="reward-label"><span>Solvable</span><span id="rewardSolvable">—</span></div>
+                        <div class="reward-bar"><div class="reward-fill" id="barSolvable"></div></div>
+                    </div>
+                    <div class="reward-item">
+                        <div class="reward-label"><span>Difficulty Band</span><span id="rewardDifficulty">—</span></div>
+                        <div class="reward-bar"><div class="reward-fill" id="barDifficulty"></div></div>
+                    </div>
+                    <div class="reward-item">
+                        <div class="reward-label"><span>Coin Reachable</span><span id="rewardCoin">—</span></div>
+                        <div class="reward-bar"><div class="reward-fill" id="barCoin"></div></div>
+                    </div>
+                    <div class="reward-item">
+                        <div class="reward-label"><span>Symmetry</span><span id="rewardSymmetry">—</span></div>
+                        <div class="reward-bar"><div class="reward-fill" id="barSymmetry"></div></div>
+                    </div>
+                    <div class="reward-item">
+                        <div class="reward-label"><span>Personality Match</span><span id="rewardPersonality">—</span></div>
+                        <div class="reward-bar"><div class="reward-fill" id="barPersonality"></div></div>
+                    </div>
+                    <div class="reward-item">
+                        <div class="reward-label"><span>Format</span><span id="rewardFormat">—</span></div>
+                        <div class="reward-bar"><div class="reward-fill" id="barFormat"></div></div>
+                    </div>
+                    <div class="reward-item">
+                        <div class="reward-label"><span><strong>Total</strong></span><span id="rewardTotal"><strong>—</strong></span></div>
+                        <div class="reward-bar"><div class="reward-fill" id="barTotal"></div></div>
+                    </div>
+                </div>
+
+                <div class="feedback-tags" id="feedbackTags"></div>
+                <div class="episode-id" id="episodeId">Episode ID: —</div>
+            </div>
+        </div>
+
+        <!-- Bottom Info Section -->
+        <div class="info-section">
+            <div class="info-card">
+                <h3>What is LevelForge?</h3>
+                <p>LevelForge trains a 0.5B language model (Qwen2.5) to design 2D platformer levels using GRPO reinforcement learning. The model learns to create levels tailored to different player personalities (brave, cautious, explorer) using only A* pathfinding rewards—no LLM judge needed.</p>
+            </div>
+
+            <div class="info-card">
+                <h3>How Reward Works</h3>
+                <ul>
+                    <li><strong>Solvable:</strong> A* finds path from P to G (hard gate)</li>
+                    <li><strong>Difficulty Band:</strong> Path length matches target</li>
+                    <li><strong>Coin Reachable:</strong> Coins lie on A* path</li>
+                    <li><strong>Symmetry:</strong> Aesthetic layout quality</li>
+                    <li><strong>Personality Match:</strong> Level suits player type</li>
+                    <li><strong>Format:</strong> Valid reasoning tags present</li>
+                </ul>
+            </div>
+
+            <div class="info-card">
+                <h3>API Endpoints</h3>
+                <ul>
+                    <li><strong>POST /reset</strong> — Start new episode</li>
+                    <li><strong>POST /step</strong> — Execute action</li>
+                    <li><strong>GET /state</strong> — Current episode state</li>
+                    <li><strong>GET /health</strong> — Server health check</li>
+                    <li><strong>GET /curriculum_level</strong> — Current curriculum info</li>
+                    <li><strong>GET /scenarios</strong> — All curriculum levels</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TILE_COLORS = {
+            '.': '#E6E6E6',
+            '#': '#505050',
+            '^': '#DC3232',
+            '$': '#FFC800',
+            'E': '#9632C8',
+            'P': '#3264DC',
+            'G': '#32C850'
+        };
+
+        const EDITABLE_TILES = ['.', '#', '^', '$', 'E'];
+
+        let currentGrid = [];
+        let originalGrid = [];
+        let currentStep = 0;
+        let episodeId = null;
+        let curriculumInterval = null;
+
+        // Initialize grid display
+        function initGrid() {
+            const gridEl = document.getElementById('gameGrid');
+            gridEl.innerHTML = '';
+
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 16; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.onclick = () => cycleTile(row, col);
+                    gridEl.appendChild(cell);
+                }
+            }
+        }
+
+        // Update grid display
+        function updateGrid(grid) {
+            currentGrid = JSON.parse(JSON.stringify(grid));
+            originalGrid = JSON.parse(JSON.stringify(grid));
+
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 16; col++) {
+                    const tile = grid[row][col];
+                    const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                    cell.style.background = TILE_COLORS[tile] || '#E6E6E6';
+                    cell.textContent = tile === '.' ? '' : tile;
+
+                    // Mark P and G as fixed
+                    if (tile === 'P' || tile === 'G') {
+                        cell.classList.add('fixed');
+                        cell.onclick = null;
+                    } else {
+                        cell.classList.remove('fixed');
+                        cell.onclick = () => cycleTile(row, col);
+                    }
+                }
+            }
+        }
+
+        // Cycle tile on click
+        function cycleTile(row, col) {
+            const currentTile = currentGrid[row][col];
+            if (currentTile === 'P' || currentTile === 'G') return;
+
+            const currentIndex = EDITABLE_TILES.indexOf(currentTile);
+            const nextIndex = (currentIndex + 1) % EDITABLE_TILES.length;
+            const nextTile = EDITABLE_TILES[nextIndex];
+
+            currentGrid[row][col] = nextTile;
+
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            cell.style.background = TILE_COLORS[nextTile];
+            cell.textContent = nextTile === '.' ? '' : nextTile;
+        }
+
+        // Update reward display
+        function updateRewards(reward) {
+            const components = [
+                { key: 'solvable', id: 'Solvable' },
+                { key: 'difficulty_band', id: 'Difficulty' },
+                { key: 'coin_reachable', id: 'Coin' },
+                { key: 'symmetry', id: 'Symmetry' },
+                { key: 'personality_match', id: 'Personality' },
+                { key: 'format_score', id: 'Format' },
+                { key: 'total', id: 'Total' }
+            ];
+
+            components.forEach(comp => {
+                const value = reward[comp.key] || 0;
+                const percentage = Math.round(value * 100);
+
+                document.getElementById(`reward${comp.id}`).textContent = value.toFixed(3);
+                const bar = document.getElementById(`bar${comp.id}`);
+                bar.style.width = percentage + '%';
+
+                // Color based on value
+                if (value >= 0.7) {
+                    bar.className = 'reward-fill high';
+                } else if (value >= 0.4) {
+                    bar.className = 'reward-fill med';
+                } else {
+                    bar.className = 'reward-fill low';
+                }
+            });
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 5000);
+        }
+
+        // Reset environment
+        async function resetEnvironment() {
+            const task = document.getElementById('taskSelect').value;
+            const personality = document.getElementById('personalitySelect').value;
+
+            document.body.classList.add('loading');
+
+            try {
+                const response = await fetch('/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_name: task, personality: personality })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Reset failed');
+                }
+
+                const obs = await response.json();
+                updateGrid(obs.grid);
+                episodeId = obs.episode_id;
+                currentStep = obs.step;
+
+                document.getElementById('stepCounter').textContent = `Step ${currentStep} / 8`;
+                document.getElementById('episodeId').textContent = `Episode ID: ${episodeId}`;
+                document.getElementById('feedbackTags').innerHTML = '';
+
+                // Clear rewards
+                ['Solvable', 'Difficulty', 'Coin', 'Symmetry', 'Personality', 'Format', 'Total'].forEach(id => {
+                    document.getElementById(`reward${id}`).textContent = '—';
+                    document.getElementById(`bar${id}`).style.width = '0%';
+                });
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.body.classList.remove('loading');
+            }
+        }
+
+        // Auto step (empty edits)
+        async function autoStep() {
+            await performStep([]);
+        }
+
+        // Apply manual edits
+        async function applyEdits() {
+            const edits = [];
+
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 16; col++) {
+                    if (currentGrid[row][col] !== originalGrid[row][col]) {
+                        edits.push({
+                            row: row,
+                            col: col,
+                            tile: currentGrid[row][col]
+                        });
+                    }
+                }
+            }
+
+            if (edits.length === 0) {
+                showError('No edits to apply. Click cells to modify them.');
+                return;
+            }
+
+            await performStep(edits);
+        }
+
+        // Perform step
+        async function performStep(edits) {
+            document.body.classList.add('loading');
+
+            try {
+                const response = await fetch('/step', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reasoning: '<think>User interaction step</think>',
+                        edits: edits,
+                        declare_done: false
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Step failed');
+                }
+
+                const result = await response.json();
+                updateGrid(result.observation.grid);
+                updateRewards(result.reward);
+                currentStep = result.observation.step;
+
+                document.getElementById('stepCounter').textContent = `Step ${currentStep} / 8`;
+
+                // Update feedback tags
+                const tagsEl = document.getElementById('feedbackTags');
+                tagsEl.innerHTML = '';
+                (result.observation.feedback_tags || []).forEach(tag => {
+                    const tagEl = document.createElement('span');
+                    tagEl.className = 'feedback-tag';
+                    tagEl.textContent = tag;
+                    tagsEl.appendChild(tagEl);
+                });
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.body.classList.remove('loading');
+            }
+        }
+
+        // Update curriculum badge
+        async function updateCurriculumBadge() {
+            try {
+                const response = await fetch('/curriculum_level');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const level = data.curriculum_level;
+
+                document.getElementById('curriculumLevel').textContent =
+                    `Level ${level.level}: ${level.name}`;
+                document.getElementById('curriculumDesc').textContent = level.description;
+                document.getElementById('avgReward').textContent = data.avg_reward.toFixed(3);
+
+            } catch (error) {
+                console.error('Failed to update curriculum badge:', error);
+            }
+        }
+
+        // Handle task selection change
+        document.getElementById('taskSelect').addEventListener('change', (e) => {
+            const badge = document.getElementById('curriculumBadge');
+
+            if (e.target.value === 'curriculum') {
+                badge.style.display = 'block';
+                updateCurriculumBadge();
+                curriculumInterval = setInterval(updateCurriculumBadge, 3000);
+            } else {
+                badge.style.display = 'none';
+                if (curriculumInterval) {
+                    clearInterval(curriculumInterval);
+                    curriculumInterval = null;
+                }
+            }
+        });
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            initGrid();
+            resetEnvironment();
+        });
+    </script>
+</body>
+</html>
