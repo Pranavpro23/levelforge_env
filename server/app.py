@@ -54,12 +54,10 @@ app = FastAPI(
 )
 
 # Mount static files - use path relative to project root for Docker compatibility
-_STATIC_PATH = "server/static"
-if os.path.exists(_STATIC_PATH):
-    app.mount("/static", StaticFiles(directory=_STATIC_PATH), name="static")
-elif os.path.exists(os.path.join(_SERVER_DIR, "static")):
-    # Fallback for when running from server/ directory
-    app.mount("/static", StaticFiles(directory=os.path.join(_SERVER_DIR, "static")), name="static")
+for static_path in ["/app/server/static", "server/static", os.path.join(_SERVER_DIR, "static")]:
+    if os.path.exists(static_path):
+        app.mount("/static", StaticFiles(directory=static_path), name="static")
+        break
 
 # Single environment instance
 _env: Optional[LevelTrailEnvironment] = None
@@ -75,16 +73,15 @@ def get_env() -> LevelTrailEnvironment:
 @app.get("/")
 async def root():
     """Serve the web UI."""
-    # Try project root path first (Docker context)
-    index_path = "server/static/index.html"
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    # Fallback to server-relative path
-    index_path = os.path.join(_SERVER_DIR, "static", "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"message": "LevelForge Environment API", "status": "running"}
-
+    possible_paths = [
+        "/app/server/static/index.html",      # Docker absolute path
+        "server/static/index.html",            # Relative from /app
+        os.path.join(_SERVER_DIR, "static", "index.html"),  # Absolute server dir
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            return FileResponse(path)
+    return {"message": "LevelForge Environment API", "docs": "/docs"}
 
 @app.get("/health")
 def health():
