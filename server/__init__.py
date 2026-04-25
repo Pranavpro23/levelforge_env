@@ -6,6 +6,6 @@
 
 """Levelforge Env environment server components."""
 
-from .levelforge_env_environment import LevelforgeEnvironment
+from .environment import LevelTrailEnvironment
 
-__all__ = ["LevelforgeEnvironment"]
+__all__ = ["LevelTrailEnvironment"]

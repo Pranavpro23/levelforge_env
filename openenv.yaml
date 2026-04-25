@@ -4,7 +4,8 @@ description: "A self-improving 2D platformer level designer where a small LLM le
 type: space
 runtime: fastapi
 app: server.app:app
-port: 8000
+port: 7860
+app_port: 7860
 tasks:
   - name: first_steps
     difficulty: easy

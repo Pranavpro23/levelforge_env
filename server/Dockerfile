@@ -6,3 +6,4 @@ COPY . .
 EXPOSE 7860
 HEALTHCHECK CMD curl -f http://localhost:7860/health || exit 1
 CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
+
