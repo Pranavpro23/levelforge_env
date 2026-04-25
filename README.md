@@ -1,12 +1,11 @@
 ---
-title: Levelforge Env Environment Server
-emoji: 🎯
+title: LevelForge Environment Server
+emoji: 🎮
 colorFrom: green
-colorTo: gray
+colorTo: blue
 sdk: docker
 pinned: false
-app_port: 8000
-base_path: /web
+app_port: 7860
 tags:
   - openenv
 ---
