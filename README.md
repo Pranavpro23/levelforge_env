@@ -22,9 +22,15 @@ base_path: /
 
 ## The Problem
 
-I build indie games. Level design is the hardest part — weeks of work creating stages that feel different for different player types. A brave player wants spike gauntlets. A cautious player wants wide open paths. An explorer wants hidden secrets and branching routes.
+Game studios spend months on level design. A single AAA game can have hundreds of designers spending years crafting levels that feel fair, fun, and tailored to different player types. Indie developers like me do it alone — which means weeks of manual work for every game.
 
-**LevelForge trains a 0.5B language model to design levels automatically for each personality** — graded entirely by A* pathfinding math. No human labels. No LLM judge. Pure verifiable rewards.
+The deeper problem: **no two players are the same.** A brave player gets bored if levels are too easy and wants spike-filled gauntlets with enemies around every corner. A cautious player gets frustrated by unfair deaths and needs wide open paths. An explorer wants hidden secrets, branching routes, and coins tucked away in unexpected places.
+
+Game studios solve this with dedicated level designers who specialize in specific player types. AI systems today cannot do this — existing procedural generation tools (CNNs, rule-based systems) produce generic levels that don't adapt to player personality.
+
+**LevelForge trains a 0.5B language model to design levels automatically for each personality type** — graded entirely by A* pathfinding math with no human labels and no LLM judge needed. The same tiny model, given just a personality string, produces fundamentally different levels for brave vs cautious vs explorer players.
+
+This has real-world applications beyond indie games: adaptive difficulty in mobile games, personalized onboarding levels in educational games, automated content generation for game studios, and AI-assisted level design tools. Any game that needs levels tailored to player behavior could use a system like this.
 
 ---
 
@@ -120,6 +126,10 @@ Call `/curriculum_level` to see the current level. Call `/scenarios` for all 7 l
 - 200 prompts per run
 - 9 task × personality combinations (first_steps/gap_jumper/symmetric_shrine × brave/cautious/explorer)
 - Repeated to reach 200 samples
+
+### Training Logs
+Full step-by-step training metrics available: [training_logs.json](training_logs.json)
+*(500 steps — reward, format_reward, env_reward, KL divergence at every step)*
 
 ---
 
@@ -254,24 +264,27 @@ GET  /docs                → Full OpenAPI documentation
 ---
 
 ## Project Structure
+
+```
 levelforge_env/
-├── inference.py          ← OpenEnv inference [START][STEP][END] format
-├── openenv.yaml          ← 3 tasks defined (easy/medium/hard)
-├── models.py             ← Pydantic: LevelTrailObservation, Action, Reward
-├── client.py             ← LevelTrailEnv HTTP client
+├── inference.py          # OpenEnv inference [START][STEP][END] format
+├── openenv.yaml          # 3 tasks defined (easy/medium/hard)
+├── models.py             # Pydantic: LevelTrailObservation, Action, Reward
+├── client.py             # LevelTrailEnv HTTP client
 ├── server/
-│   ├── app.py            ← FastAPI (/reset /step /state /curriculum_level)
-│   ├── environment.py    ← Episode logic + rolling reward history
-│   ├── tilemap.py        ← 8×16 grid + tile definitions
-│   ├── astar.py          ← A* pathfinder (4-connected, spike=death)
-│   ├── renderer.py       ← Pygame grid → PNG → evolution GIF
-│   ├── rewards.py        ← 6 reward functions (pure Python)
-│   ├── scenarios.py      ← 30 scenarios + 7 curriculum levels
+│   ├── app.py            # FastAPI: /reset /step /state /curriculum_level
+│   ├── environment.py    # Episode logic + rolling reward history
+│   ├── tilemap.py        # 8x16 grid + tile definitions
+│   ├── astar.py          # A* pathfinder (4-connected, spike=death)
+│   ├── renderer.py       # Pygame grid to PNG to evolution GIF
+│   ├── rewards.py        # 6 reward functions (pure Python, no LLM)
+│   ├── scenarios.py      # 30 scenarios + 7 curriculum levels
 │   ├── static/
-│   │   └── index.html    ← Interactive web UI
+│   │   └── index.html    # Interactive web UI
 │   └── Dockerfile
 └── training/
-└── train_grpo.ipynb  ← GRPO training notebook (Colab)
+    └── train_grpo.ipynb  # GRPO training notebook (Colab)
+```
 
 ---
 
