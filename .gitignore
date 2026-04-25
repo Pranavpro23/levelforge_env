@@ -8,3 +8,6 @@ __pycache__/
 levelforge_trained/
 levelforge_checkpoint_200/
 levelforge_out/
+*.png
+*.jpg
+*.gif
