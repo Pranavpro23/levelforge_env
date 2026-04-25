@@ -27,7 +27,7 @@ class LevelforgeEnv(
 
     Example:
         >>> # Connect to a running server
-        >>> with LevelforgeEnv(base_url="http://localhost:8000") as client:
+        >>> with LevelforgeEnv(base_url="http://localhost:7860") as client:
         ...     result = client.reset()
         ...     print(result.observation.echoed_message)
         ...
