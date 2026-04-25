@@ -1,7 +1,22 @@
 spec_version: 1
-name: levelforge_env
+name: levelforge-env
+description: "A self-improving 2D platformer level designer where a small LLM learns to design levels for different player personalities (brave/cautious/explorer) via GRPO training, graded by A* pathfinding."
 type: space
 runtime: fastapi
 app: server.app:app
 port: 8000
-
+tasks:
+  - name: first_steps
+    difficulty: easy
+    description: "Add coins and spikes to a pre-built level"
+  - name: gap_jumper
+    difficulty: medium
+    description: "Add platforms across gaps, coins, and an enemy"
+  - name: symmetric_shrine
+    difficulty: hard
+    description: "Design a complete level from scratch for a given personality"
+tags:
+  - openenv
+  - game-design
+  - procedural-generation
+  - self-improvement

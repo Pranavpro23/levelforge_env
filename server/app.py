@@ -1,84 +1,113 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
-
 """
-FastAPI application for the Levelforge Env Environment.
-
-This module creates an HTTP server that exposes the LevelforgeEnvironment
-over HTTP and WebSocket endpoints, compatible with EnvClient.
+FastAPI application for the LevelForge Environment.
 
 Endpoints:
-    - POST /reset: Reset the environment
+    - GET /health: Health check
+    - POST /reset: Reset the environment with task_name and personality
     - POST /step: Execute an action
     - GET /state: Get current environment state
-    - GET /schema: Get action/observation schemas
-    - WS /ws: WebSocket endpoint for persistent sessions
-
-Usage:
-    # Development (with auto-reload):
-    uvicorn server.app:app --reload --host 0.0.0.0 --port 8000
-
-    # Production:
-    uvicorn server.app:app --host 0.0.0.0 --port 8000 --workers 4
-
-    # Or run directly:
-    python -m server.app
 """
 
-try:
-    from openenv.core.env_server.http_server import create_app
-except Exception as e:  # pragma: no cover
-    raise ImportError(
-        "openenv is required for the web interface. Install dependencies with '\n    uv sync\n'"
-    ) from e
+import sys
+import os
+from typing import Optional
 
-try:
-    from ..models import LevelforgeAction, LevelforgeObservation
-    from .levelforge_env_environment import LevelforgeEnvironment
-except ModuleNotFoundError:
-    from models import LevelforgeAction, LevelforgeObservation
-    from server.levelforge_env_environment import LevelforgeEnvironment
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+# Path setup
+_SERVER_DIR = os.path.dirname(os.path.abspath(__file__))
+_ROOT_DIR = os.path.dirname(_SERVER_DIR)
+
+if _SERVER_DIR not in sys.path:
+    sys.path.insert(0, _SERVER_DIR)
+if _ROOT_DIR not in sys.path:
+    sys.path.insert(0, _ROOT_DIR)
+
+from models import LevelTrailObservation, LevelTrailAction, LevelTrailReward
+from environment import LevelTrailEnvironment
 
 
-# Create the app with web interface and README integration
-app = create_app(
-    LevelforgeEnvironment,
-    LevelforgeAction,
-    LevelforgeObservation,
-    env_name="levelforge_env",
-    max_concurrent_envs=1,  # increase this number to allow more concurrent WebSocket sessions
+# Request/Response models
+class ResetRequest(BaseModel):
+    task_name: str
+    personality: str
+
+
+class StepResponse(BaseModel):
+    observation: LevelTrailObservation
+    reward: LevelTrailReward
+    done: bool
+    info: dict
+
+
+# Create FastAPI app
+app = FastAPI(
+    title="LevelForge Environment",
+    description="OpenEnv-compatible environment for training LLMs to design platformer levels",
+    version="1.0.0"
 )
 
+# Single environment instance
+_env: Optional[LevelTrailEnvironment] = None
 
-def main(host: str = "0.0.0.0", port: int = 8000):
-    """
-    Entry point for direct execution via uv run or python -m.
 
-    This function enables running the server without Docker:
-        uv run --project . server
-        uv run --project . server --port 8001
-        python -m levelforge_env.server.app
+def get_env() -> LevelTrailEnvironment:
+    global _env
+    if _env is None:
+        _env = LevelTrailEnvironment()
+    return _env
 
-    Args:
-        host: Host address to bind to (default: "0.0.0.0")
-        port: Port number to listen on (default: 8000)
 
-    For production deployments, consider using uvicorn directly with
-    multiple workers:
-        uvicorn levelforge_env.server.app:app --workers 4
-    """
+@app.get("/health")
+def health():
+    """Health check endpoint."""
+    return {"status": "healthy"}
+
+
+@app.post("/reset", response_model=LevelTrailObservation)
+def reset(request: ResetRequest):
+    """Reset the environment with a new episode."""
+    env = get_env()
+    try:
+        obs = env.reset(request.task_name, request.personality)
+        return obs
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/step", response_model=StepResponse)
+def step(action: LevelTrailAction):
+    """Execute one step in the environment."""
+    env = get_env()
+    if env._episode_id is None:
+        raise HTTPException(status_code=400, detail="Environment not reset. Call /reset first.")
+
+    try:
+        obs, reward, done, info = env.step(action)
+        return StepResponse(
+            observation=obs,
+            reward=reward,
+            done=done,
+            info=info
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/state")
+def state():
+    """Get current environment state."""
+    env = get_env()
+    return env.state()
+
+
+
+
+def main():
     import uvicorn
-
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=8000)
-    args = parser.parse_args()
-    main(port=args.port)
+    main()
