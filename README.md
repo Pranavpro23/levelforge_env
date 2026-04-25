@@ -6,9 +6,7 @@ colorTo: blue
 sdk: docker
 pinned: false
 app_port: 7860
-tags:
-  - openenv
-base_path: /web
+base_path: /
 ---
 
 # LevelForge — AI Game Level Designer
