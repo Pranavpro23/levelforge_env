@@ -325,8 +325,7 @@ The personality system is the key novelty: the same 0.5B model produces fundamen
 | 🤗 HF Space (live demo) | https://huggingface.co/spaces/pranavgadodia/levelforge-env |
 | 💻 GitHub | https://github.com/Pranavpro23/levelforge_env |
 | 📓 Training Notebook | [Open in Colab](https://colab.research.google.com/github/Pranavpro23/levelforge_env/blob/main/training/train_grpo.ipynb) |
-| 📝 HF Mini-blog | *[coming soon]* |
-| 🎥 Demo video | *[coming soon]* |
+| 📝 HF Mini-blog | [LevelForge Blog](https://huggingface.co/spaces/pranavgadodia/levelforge-env/blob/main/Blog.MD) |
 
 ---
 
