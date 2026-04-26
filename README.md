@@ -135,6 +135,13 @@ Full step-by-step training metrics available: [training_logs.json](training_logs
 
 ## Results
 
+### All Training Runs — Direct Comparison
+
+![All Runs Compared](https://raw.githubusercontent.com/Pranavpro23/levelforge_env/main/reward_curve_all_runs.png)
+*Three training runs on the same axes. Run 1 (blue, 200 steps) establishes baseline. 
+Run 2 (green, 500 steps) shows full convergence peaking at 1.997. 
+Run 3 (red, curriculum) enters already competent — sustains 1.892 from step 1.*
+
 ### Run 1 — 200 Steps (Baseline)
 
 **Training stats:** global_step=200, training_loss=-0.0012, runtime=6244s (1hr 44min)
