@@ -328,6 +328,3 @@ The personality system is the key novelty: the same 0.5B model produces fundamen
 | 📝 HF Mini-blog | [LevelForge Blog](https://huggingface.co/spaces/pranavgadodia/levelforge-env/blob/main/Blog.MD) |
 
 ---
-
-*Built for Meta PyTorch OpenEnv Hackathon × Scaler School of Technology, India 2026*
-*Theme 4: Self-Improvement + Wild Card*
