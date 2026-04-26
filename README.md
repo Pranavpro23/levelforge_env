@@ -199,11 +199,26 @@ Bottom row: After 500-step training — same model, different personality input 
 
 ---
 
-### Run 3 — Curriculum Training (Self-Improving)
+### Run 3 — Curriculum Training (Self-Improving Difficulty)
 
-*[Results pending — curriculum training in progress]*
+**Training stats:** global_step=200, runtime=~90min
 
-*Will show adaptive difficulty progression: tutorial → easy → medium → hard → tricky as model reward improves. Demonstrates Theme 4 (Self-Improvement) — the environment itself becomes a teacher.*
+![Curriculum Reward Curve](https://raw.githubusercontent.com/Pranavpro23/levelforge_env/main/reward_curve_curriculum.png)
+*Curriculum training starts at reward 1.41 from step 1 — no warm-up needed. 
+The model enters already competent from 500-step training. 
+format_reward hits 0.998 from step 2 and holds. env_reward sustains 0.894 consistently.*
+
+| Metric | Value |
+|--------|-------|
+| Starting reward (step 1) | 1.41 |
+| format_reward from step 2 | 0.998 (perfect) |
+| env_reward sustained | 0.894 |
+| Total reward sustained | 1.892 |
+
+**What curriculum demonstrates:** The environment automatically adapts difficulty 
+as the model improves — starting at tutorial level and escalating toward harder 
+tasks as reward history builds. This is Theme 4 (Self-Improvement) in action: 
+the environment itself becomes a teacher.
 
 ---
 
