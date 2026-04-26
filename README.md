@@ -351,6 +351,6 @@ This connects directly to Theme 1 (Multi-Agent) in addition to Theme 4
 | 🤗 HF Space (live demo) | https://huggingface.co/spaces/pranavgadodia/levelforge-env |
 | 💻 GitHub | https://github.com/Pranavpro23/levelforge_env |
 | 📓 Training Notebook | [Open in Colab](https://colab.research.google.com/github/Pranavpro23/levelforge_env/blob/main/training/train_grpo.ipynb) |
-| 📝 HF Mini-blog | [LevelForge Blog](https://huggingface.co/spaces/pranavgadodia/levelforge-env/blob/main/Blog.MD) |
+| 📝 HF Mini-blog | [LevelForge Blog](https://huggingface.co/spaces/pranavgadodia/levelforge-env/blob/main/Blog.md) |
 
 ---
