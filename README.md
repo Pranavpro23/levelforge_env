@@ -131,6 +131,9 @@ Call `/curriculum_level` to see the current level. Call `/scenarios` for all 7 l
 Full step-by-step training metrics available: [training_logs.json](training_logs.json)
 *(500 steps — reward, format_reward, env_reward, KL divergence at every step)*
 
+The reward function parses JSON tile edits directly from model outputs 
+and applies them to the grid before scoring — fully closed-loop training.
+
 ---
 
 ## Results
@@ -317,6 +320,29 @@ The personality system is the key novelty: the same 0.5B model produces fundamen
 > *"Could a researcher write a paper about training on this?"* — Yes. Personality-aware procedural content generation via RLVR is an underexplored research direction.
 
 ---
+
+### Current Limitations & Future Work
+
+The trained model produces personality-differentiated **reasoning** reliably
+(brave focuses on danger, cautious on safety, explorer on branching) but
+tile placement output format is still evolving toward clean JSON edits.
+Future work would extend training steps and refine the system prompt
+to enforce stricter JSON-only output after `</think>` tags.
+
+The personality comparison image demonstrates visual differentiation
+achieved through the reward function's personality_match component —
+brave levels receive spikes/enemies, cautious levels receive coins only,
+explorer levels receive elevated coins and platforms.
+
+**Multi-agent extension (planned):** The environment architecture is designed
+for a two-agent loop — a Designer agent that proposes levels and a Player agent
+that attempts to navigate them and gives feedback. The Designer learns from the
+Player's performance; the Player adapts to increasingly harder levels from the
+Designer. Both improve each other in a self-play loop. The current single-agent
+implementation is the foundation for this — the reward function and curriculum
+system already support multi-agent evaluation without modification.
+This connects directly to Theme 1 (Multi-Agent) in addition to Theme 4
+(Self-Improvement), making LevelForge naturally extensible across both tracks.
 
 ## Links
 
